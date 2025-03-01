@@ -2,23 +2,35 @@
   "name": "llm-chat-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "update-weather": "tsx src/scripts/updateWeather.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.22.0",
+    "@langchain/core": "^0.3.42",
+    "@langchain/google-genai": "^0.1.10",
+    "@langchain/pinecone": "^0.2.0",
+    "@pinecone-database/pinecone": "^5.1.0",
+    "dotenv": "^16.4.7",
+    "langchain": "^0.3.19",
+    "next": "15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.2.0"
+    "web-streams-polyfill": "^4.1.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5"
   }
 }
