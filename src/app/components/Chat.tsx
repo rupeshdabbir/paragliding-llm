@@ -52,7 +52,7 @@ export default function Chat() {
     if (!input.trim()) return;
 
     const userMessage: Message = { role: 'user' as const, content: input };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev: Message[]): Message[] => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
@@ -71,11 +71,11 @@ export default function Chat() {
       if (!response.ok) throw new Error(data.error);
 
       const assistantMessage: Message = { role: 'assistant' as const, content: data.response };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev: Message[]): Message[] => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error:', error);
       const errorMessage: Message = { role: 'assistant' as const, content: 'Sorry, there was an error processing your request.' };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev: Message[]): Message[] => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
