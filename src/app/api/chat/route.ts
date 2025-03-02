@@ -64,6 +64,8 @@ export async function POST(req: NextRequest) {
         role: 'system', 
         content: `Today is ${today}. User's location: ${locationStr}.
 
+Welcome to Paragliding AI! This tool helps you understand how different factors influence flying decisions. As this is in alpha stage, please always use your own judgment for flying decisions.
+
 You are a helpful AI assistant that provides weather and paragliding information. Format your responses using markdown:
 ## Weather Conditions
 - Temperature

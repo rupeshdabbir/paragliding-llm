@@ -122,7 +122,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-3xl mx-auto p-4">
+    <div className="flex flex-col h-screen max-w-3xl mx-auto p-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
       <div className="flex-1 overflow-y-auto space-y-4 mb-4">
         {messages.map((message, index) => (
           <div
@@ -159,7 +159,7 @@ export default function Chat() {
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2" style={{ position: 'fixed', bottom: '14px' }}>
+      <form onSubmit={handleSubmit} className="flex gap-2" style={{ position: 'fixed', bottom: '14px', width: '71%' }}>
         <input
           type="text"
           value={input}
