@@ -40,7 +40,16 @@ async function fetchWindyForecast(lat: number, lon: number): Promise<ForecastRes
       lat,
       lon,
       model: 'gfs',
-      parameters: ['temp', 'wind', 'dewpoint', 'precip', 'pressure'],
+      parameters: [
+        'temp', 
+        'wind', 
+        'dewpoint', 
+        'precip', 
+        'pressure',
+        'lclouds',    // Low clouds (above 800hPa)
+        'mclouds',    // Medium clouds (between 450hPa and 800hPa)
+        'hclouds'     // High clouds (below 450hPa)
+      ],
       key: WINDY_API_KEY,
     }),
   });
@@ -68,8 +77,42 @@ async function fetchWindyForecast(lat: number, lon: number): Promise<ForecastRes
   // Format the forecast period for metadata
   const forecastPeriod = `${startDate.toISOString()} to ${endDate.toISOString()}`;
   
-  // Calculate some statistics for metadata
-  const temperatures = data['temp-surface'].map((t: number) => t - 273.15);
+  // Convert the forecast data into a readable format
+  const forecast = data.ts.map((timestamp: number, index: number) => {
+    const date = new Date(timestamp * 1000);
+    
+    // Calculate wind speed and direction from u and v components
+    const windU = data['wind_u-surface']?.[index] ?? 0;
+    const windV = data['wind_v-surface']?.[index] ?? 0;
+    const windSpeed = (Math.sqrt(Math.pow(windU, 2) + Math.pow(windV, 2)) * 2.237).toFixed(1);  // Convert to mph
+    const windDirection = ((Math.atan2(windV, windU) * 180 / Math.PI + 180) % 360).toFixed(0);
+    
+    // Get cloud coverage percentages
+    const lowClouds = data['lclouds-surface']?.[index] ?? 0;
+    const midClouds = data['mclouds-surface']?.[index] ?? 0;
+    const highClouds = data['hclouds-surface']?.[index] ?? 0;
+
+    // Convert temperature from Kelvin to Fahrenheit
+    const tempF = ((data['temp-surface']?.[index] - 273.15) * 9/5 + 32).toFixed(1);
+    
+    return `
+      Date: ${date.toLocaleDateString()}
+      Time: ${date.toLocaleTimeString()}
+      Temperature: ${tempF}°F
+      Wind Speed: ${windSpeed} mph
+      Wind Direction: ${windDirection}°
+      Cloud Coverage:
+        - Low Clouds: ${(lowClouds * 100).toFixed(0)}%
+        - Mid Clouds: ${(midClouds * 100).toFixed(0)}%
+        - High Clouds: ${(highClouds * 100).toFixed(0)}%
+      Dewpoint: ${((data['dewpoint-surface']?.[index] - 273.15) * 9/5 + 32).toFixed(1)}°F
+      Pressure: ${(data['pressure-surface']?.[index] / 100).toFixed(1)} hPa
+      Precipitation: ${(data['precip-surface']?.[index] * 1000).toFixed(1)} mm
+    `.trim();
+  }).join('\n\n');
+
+  // Calculate statistics in Fahrenheit
+  const temperatures = data['temp-surface'].map((t: number) => (t - 273.15) * 9/5 + 32);
   const avgTemp = temperatures.reduce((a: number, b: number) => a + b, 0) / temperatures.length;
   const maxTemp = Math.max(...temperatures);
   const minTemp = Math.min(...temperatures);
@@ -81,28 +124,6 @@ async function fetchWindyForecast(lat: number, lon: number): Promise<ForecastRes
   const avgWindSpeed = windSpeeds.reduce((a: number, b: number) => a + b, 0) / windSpeeds.length;
   const maxWindSpeed = Math.max(...windSpeeds);
   
-  // Convert the forecast data into a readable format
-  const forecast = data.ts.map((timestamp: number, index: number) => {
-    const date = new Date(timestamp * 1000);
-    
-    // Calculate wind speed and direction from u and v components
-    const windU = data['wind_u-surface']?.[index] ?? 0;
-    const windV = data['wind_v-surface']?.[index] ?? 0;
-    const windSpeed = (Math.sqrt(Math.pow(windU, 2) + Math.pow(windV, 2)) * 2.237).toFixed(1);  // Convert to mph
-    const windDirection = ((Math.atan2(windV, windU) * 180 / Math.PI + 180) % 360).toFixed(0);
-    
-    return `
-      Date: ${date.toLocaleDateString()}
-      Time: ${date.toLocaleTimeString()}
-      Temperature: ${(data['temp-surface']?.[index] - 273.15)?.toFixed(1) ?? 'N/A'}°C  // Convert from Kelvin to Celsius
-      Wind Speed: ${windSpeed} mph
-      Wind Direction: ${windDirection}°
-      Dewpoint: ${(data['dewpoint-surface']?.[index] - 273.15)?.toFixed(1) ?? 'N/A'}°C  // Convert from Kelvin to Celsius
-      Pressure: ${(data['pressure-surface']?.[index] / 100)?.toFixed(1) ?? 'N/A'} hPa  // Convert from Pa to hPa
-      Precipitation: ${(data['precip-surface']?.[index] * 1000)?.toFixed(1) ?? 'N/A'} mm  // Convert from m to mm
-    `.trim();
-  }).join('\n\n');
-
   return {
     forecast,
     metadata: {
