@@ -20,7 +20,22 @@ interface Location {
 }
 
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: 'assistant',
+      content: `# Welcome to Paragliding AI! 🪂
+
+This tool helps you understand how different factors influence flying decisions. You can ask questions about:
+- Current weather conditions
+- Flying conditions assessment
+- Safety considerations
+- Local spot information
+
+**Please Note:** This tool is in alpha stage, so always use your own judgment for flying decisions.
+
+How can I help you today?`
+    }
+  ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [location, setLocation] = useState<Location | null>(null);
