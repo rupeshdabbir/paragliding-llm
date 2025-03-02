@@ -110,14 +110,15 @@ export default function Chat() {
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2" style={{ position: 'fixed' }}>
+      <form onSubmit={handleSubmit} className="flex gap-2" style={{ position: 'fixed', bottom: '14px;' }}>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
+          placeholder="Message Paragliding AI..."
           className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
+          style={{ width: '650px', height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger' }}
         />
         <button
           type="submit"
