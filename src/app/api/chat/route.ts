@@ -60,11 +60,45 @@ export async function POST(req: NextRequest) {
     });
 
     const response = await model.call([
-      { role: 'system', content: `Today is ${today}. User's location: ${locationStr}. Use the following context to help answer the question: ${context}` },
+      { 
+        role: 'system', 
+        content: `Today is ${today}. User's location: ${locationStr}.
+
+You are a helpful AI assistant that provides weather and paragliding information. Format your responses using markdown:
+## Weather Conditions
+- Temperature
+- Wind Speed and Direction
+- Precipitation
+- Cloud Cover
+
+## Paragliding Assessment
+- Current Conditions
+- Safety Considerations
+- Recommendations
+
+**Important:** Always emphasize safety and the need to consult local experts.
+
+Use the following context to help answer the question: ${context}`
+      },
       { role: 'user', content: message }
     ]);
 
-    return NextResponse.json({ response: response.content });
+    // Convert response content to string
+    let responseText = '';
+    if (typeof response.content === 'string') {
+      responseText = response.content;
+    } else if (Array.isArray(response.content)) {
+      responseText = response.content
+        .map(item => typeof item === 'string' ? item : JSON.stringify(item))
+        .join('\n');
+    }
+
+    // Format the response with proper line breaks
+    const formattedResponse = responseText
+      .replace(/\n\n/g, '\n\n')  // Ensure consistent line breaks
+      .trim();
+
+    return NextResponse.json({ response: formattedResponse });
   } catch (error: any) {
     console.error('Error in chat route:', error);
     return NextResponse.json(

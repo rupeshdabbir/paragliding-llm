@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { Components } from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -81,6 +86,41 @@ export default function Chat() {
     }
   };
 
+  const markdownComponents: Components = {
+    code: ({ className, children }) => {
+      const match = /language-(\w+)/.exec(className || '');
+      return match ? (
+        <SyntaxHighlighter
+          style={atomDark as any}
+          language={match[1]}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      ) : (
+        <code className={className}>
+          {children}
+        </code>
+      );
+    },
+    p: ({ children }) => <p className="mb-2">{children}</p>,
+    h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+    h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+    h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+    ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+    ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+    li: ({ children }) => <li className="mb-1">{children}</li>,
+    a: ({ href, children }) => (
+      <a href={href} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+    blockquote: ({ children }) => (
+      <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2">
+        {children}
+      </blockquote>
+    ),
+  };
+
   return (
     <div className="flex flex-col h-screen max-w-3xl mx-auto p-4">
       <div className="flex-1 overflow-y-auto space-y-4 mb-4">
@@ -98,7 +138,16 @@ export default function Chat() {
                   : 'bg-gray-100 text-gray-900'
               }`}
             >
-              {message.content}
+              {message.role === 'assistant' ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={markdownComponents}
+                >
+                  {message.content}
+                </ReactMarkdown>
+              ) : (
+                message.content
+              )}
             </div>
           </div>
         ))}
@@ -110,7 +159,7 @@ export default function Chat() {
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2" style={{ position: 'fixed', bottom: '14px;' }}>
+      <form onSubmit={handleSubmit} className="flex gap-2" style={{ position: 'fixed', bottom: '14px' }}>
         <input
           type="text"
           value={input}
@@ -118,7 +167,7 @@ export default function Chat() {
           placeholder="Message Paragliding AI..."
           className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
-          style={{ width: '650px', height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger' }}
+          style={{ width: '650px', height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger', background: 'white' }}
         />
         <button
           type="submit"
