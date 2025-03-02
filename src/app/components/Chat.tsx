@@ -6,17 +6,19 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Components } from 'react-markdown';
+import WeatherGauges from './WeatherGauges';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-}
-
-interface Location {
-  latitude: number;
-  longitude: number;
-  city?: string;
-  country?: string;
+  weatherData?: {
+    windSpeed: number;
+    windDirection: number;
+    flightConditions: {
+      recommendation: 'Low' | 'Medium' | 'High';
+      confidence: number;
+    };
+  };
 }
 
 export default function Chat() {
@@ -25,47 +27,13 @@ export default function Chat() {
       role: 'assistant',
       content: `# Welcome to Paragliding AI! 🪂
 
-This tool helps you understand how different factors influence flying decisions. You can ask questions about:
-- Current weather conditions
-- Flying conditions assessment
-- Safety considerations
-- Local spot information
+I'm here to help you with weather conditions and paragliding advice. Feel free to ask about current conditions or flying recommendations.
 
-**Please Note:** This tool is in alpha stage, so always use your own judgment for flying decisions.
-
-How can I help you today?`
+**Note:** This tool is in alpha stage, so always use your own judgment for flying decisions.`
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [location, setLocation] = useState<Location | null>(null);
-
-  useEffect(() => {
-    // Get user's location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          // Reverse geocoding using OpenStreetMap Nominatim API
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await response.json();
-          setLocation({
-            latitude,
-            longitude,
-            city: data.address.city || data.address.town || data.address.village,
-            country: data.address.country
-          });
-        } catch (error) {
-          console.error('Error getting location details:', error);
-          setLocation({ latitude, longitude });
-        }
-      }, (error) => {
-        console.error('Error getting location:', error);
-      });
-    }
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +50,12 @@ How can I help you today?`
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: input,
-          location: location 
+          location: { 
+            latitude: 37.7749,
+            longitude: -122.4194,
+            city: 'San Francisco',
+            country: 'USA'
+          }
         }),
       });
 
@@ -90,11 +63,27 @@ How can I help you today?`
       
       if (!response.ok) throw new Error(data.error);
 
-      const assistantMessage: Message = { role: 'assistant' as const, content: data.response };
+      const weatherData = data.weatherData ? {
+        windSpeed: data.weatherData.windSpeed || 0,
+        windDirection: data.weatherData.windDirection || 0,
+        flightConditions: {
+          recommendation: data.weatherData.flightConditions.recommendation || 'Low',
+          confidence: data.weatherData.flightConditions.confidence || 0
+        }
+      } : undefined;
+
+      const assistantMessage: Message = { 
+        role: 'assistant' as const, 
+        content: data.response,
+        weatherData
+      };
       setMessages((prev: Message[]): Message[] => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage: Message = { role: 'assistant' as const, content: 'Sorry, there was an error processing your request.' };
+      const errorMessage: Message = { 
+        role: 'assistant' as const, 
+        content: 'Sorry, there was an error processing your request.' 
+      };
       setMessages((prev: Message[]): Message[] => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -138,12 +127,12 @@ How can I help you today?`
 
   return (
     <div className="flex flex-col h-screen max-w-3xl mx-auto p-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4 w-full">
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${
-              message.role === 'user' ? 'justify-end' : 'justify-start'
+            className={`flex flex-col ${
+              message.role === 'user' ? 'items-end' : 'items-start'
             }`}
           >
             <div
@@ -154,12 +143,23 @@ How can I help you today?`
               }`}
             >
               {message.role === 'assistant' ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={markdownComponents}
-                >
-                  {message.content}
-                </ReactMarkdown>
+                <>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                  {message.weatherData && (
+                    <div className="mt-4 border-t pt-4">
+                      <WeatherGauges
+                        windSpeed={message.weatherData.windSpeed}
+                        windDirection={message.weatherData.windDirection}
+                        flightConditions={message.weatherData.flightConditions}
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
                 message.content
               )}
@@ -174,24 +174,27 @@ How can I help you today?`
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2" style={{ position: 'fixed', bottom: '14px', width: '71%' }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Message Paragliding AI..."
-          className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-          style={{ width: '650px', height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger', background: 'white' }}
-        />
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
-        >
-          Send
-        </button>
-      </form>
+      <div className="fixed bottom-0 w-[71%] bg-white p-4">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Message Paragliding AI..."
+            className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
+            style={{ height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger' }}
+          />
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            style={{ height: '50px' }}
+          >
+            Send
+          </button>
+        </form>
+      </div>
     </div>
   );
 } 
