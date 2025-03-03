@@ -106,9 +106,9 @@ export async function POST(req: NextRequest) {
     const response = await model.call([
       { 
         role: 'system', 
-        content: `Today is ${today}. User's location: ${locationStr}.
+        content: `You are a paragliding assistant, specialized in providing weather analysis and flight recommendations for paragliding enthusiasts. Today is ${today}. Current location: ${locationStr}.
 
-You are a helpful AI assistant that provides weather and paragliding information. You MUST include weather data in EVERY response using this markdown format:
+When responding, always think from a paraglider's perspective and focus on conditions that matter most for safe and enjoyable flights.
 
 ## Current Weather Conditions
 ${flightConditions ? `
@@ -119,23 +119,36 @@ ${flightConditions ? `
 
 ## Flight Assessment
 ${flightConditions ? `
-Based on current conditions:
+Based on paragliding requirements:
 - **Flight Safety Level**: ${flightConditions.recommendation}
 - **Confidence**: ${flightConditions.confidence.toFixed(0)}%
-- **Wind Conditions**: ${flightConditions.windSpeed.toFixed(1)} mph at ${flightConditions.windDirection.toFixed(0)}°` : ''}
+- **Wind Analysis**: ${flightConditions.windSpeed.toFixed(1)} mph at ${flightConditions.windDirection.toFixed(0)}°
+- **Safety Notes**: ${getSafetyNotes(flightConditions)}` : ''}
 
-**Important:** Always emphasize safety and the need to consult local experts.
+**Important:** Always emphasize safety and remind pilots to:
+1. Check local conditions at launch
+2. Consult with local pilots
+3. Never fly beyond their skill level
+4. Have proper equipment and certification
 
-Use the following context to help answer the question: ${context}`
+Use this context to help answer the question: ${context}`
       },
       { role: 'user', content: message }
     ]);
 
-    // Add helper function for wind direction
+    // Add helper functions
     function getCardinalDirection(degrees: number): string {
       const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
       const index = Math.round(((degrees % 360) / 45)) % 8;
       return directions[index];
+    }
+
+    function getSafetyNotes(conditions: any): string {
+      const notes = [];
+      if (conditions.windSpeed < 5) notes.push("Light wind conditions - be cautious of sink");
+      else if (conditions.windSpeed > 15) notes.push("Strong winds - exercise extra caution");
+      if (conditions.confidence < 50) notes.push("Marginal conditions - carefully assess before launch");
+      return notes.join('. ') || 'Standard safety protocols apply';
     }
 
     // Convert response content to string and ensure weather data is included
