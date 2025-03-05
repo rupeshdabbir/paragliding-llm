@@ -44,7 +44,7 @@ async function fetchWindyForecast(lat: number, lon: number): Promise<ForecastRes
     body: JSON.stringify({
       lat,
       lon,
-      model: 'hrrr',
+      model: 'gfs',
       parameters: [
         'temp', 
         'wind', 
