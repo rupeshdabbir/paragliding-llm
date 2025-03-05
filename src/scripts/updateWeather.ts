@@ -18,13 +18,8 @@ const locations = [
     name: 'Alameda'
   },
   {
-    lat: 37.7652,
-    lon: -122.2416,
-    name: 'Alameda'
-  },
-  {
     lat: 37.6684,
-    lon: 122.4942,
+    lon: -122.4944,
     name: 'Mussel Rock State Park'
   },
   {
@@ -33,8 +28,8 @@ const locations = [
     name: 'Blue Rock'
   },
   {
-    lat: 37.4472,
-    lon: 121.8478,
+    lat: 37.4666,
+    lon: -121.8569,
     name: 'Ed Levin County Park'
   },
   
