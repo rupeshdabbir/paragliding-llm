@@ -4,7 +4,12 @@ import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { PineconeStore } from '@langchain/pinecone';
 
+// Windy API configuration
 const WINDY_API_KEY = 'yctyXpeQXeRxVLpUGSkUCfTjbVNR80Qk';
+if (!WINDY_API_KEY) {
+  throw new Error('WINDY_API_KEY environment variable is not set');
+}
+
 const WINDY_API_URL = 'https://api.windy.com/api/point-forecast/v2';
 
 interface ForecastResult {
@@ -39,7 +44,7 @@ async function fetchWindyForecast(lat: number, lon: number): Promise<ForecastRes
     body: JSON.stringify({
       lat,
       lon,
-      model: 'gfs',
+      model: 'hrrr',
       parameters: [
         'temp', 
         'wind', 
