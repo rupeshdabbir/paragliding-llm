@@ -193,10 +193,10 @@ export async function POST(req: NextRequest) {
     const weatherData = similarDocs[0]?.metadata;
     console.log('REMOVE: Weather data:', weatherData);
     
-    // Parse the date from the query - now returns a string
+    // Parse the date from the query - convert null to undefined
     const targetDateStr = parseDateFromQuery(message);
     console.log('Target date - parseDateFromQuery:', targetDateStr);
-    const flightConditions = weatherData ? calculateFlightConditions(weatherData, targetDateStr) : null;
+    const flightConditions = weatherData ? calculateFlightConditions(weatherData, targetDateStr || undefined) : null;
 
     console.log('REMOVE: Flight conditions:', flightConditions);
     // Generate response using context and user message
