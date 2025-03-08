@@ -224,12 +224,20 @@ export async function POST(req: NextRequest) {
           month: 'long',
           day: 'numeric'
         });
-
+    const date = new Date()
+    const currentDate = date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
     const response = await model.call([
       { 
         role: 'system', 
-        content: `You are a paragliding assistant, specialized in providing weather analysis and flight recommendations for paragliding enthusiasts. Forecast date: ${Date.now()}.
-
+        content: `You are a paragliding assistant, specialized in providing weather analysis and flight recommendations for paragliding enthusiasts. 
+        Current date: ${currentDate}. 
+        --IMPORTANT: Always use the current date as your reference of time for the weather forecast.(If today's day is asked always return current date)
+        --You will have acces to the weather forecast for the next 7 days(you can use this to answer questions about the weather for the next 7 days).
 When responding, always think from a paraglider's perspective and focus on conditions that matter most for safe and enjoyable flights.
 
 ## Current Weather Conditions
@@ -253,7 +261,7 @@ Based on paragliding requirements:
 3. Never fly beyond their skill level
 4. Have proper equipment and certification
 
-Use this context to help answer the question: ${context}`
+Use this format to help answer the questions`
       },
       { role: 'user', content: message }
     ]);
