@@ -52,33 +52,33 @@ function prepareMetadata(weatherData: any, location: Location) {
   return metadata;
 }
 
-async function addWeatherDataToPinecone(weatherData: any, location: Location, pineconeIndex: any) {
-  try {
-    // Prepare metadata
-    const metadata = prepareMetadata(weatherData, location);
+// async function addWeatherDataToPinecone(weatherData: any, location: Location, pineconeIndex: any) {
+//   try {
+//     // Prepare metadata
+//     const metadata = prepareMetadata(weatherData, location);
     
-    // Create document text
-    const documentText = createDocumentText(metadata);
+//     // Create document text
+//     const documentText = createDocumentText(metadata);
     
-    // Generate embedding
-    const embedding = await generateEmbedding(documentText);
+//     // Generate embedding
+//     const embedding = await generateEmbedding(documentText);
     
-    // Prepare vector for Pinecone
-    const vector = {
-      id: `${location.name}-${Date.now()}`,
-      values: embedding,
-      metadata: metadata // This will only include the fields we specified above
-    };
+//     // Prepare vector for Pinecone
+//     const vector = {
+//       id: `${location.name}-${Date.now()}`,
+//       values: embedding,
+//       metadata: metadata // This will only include the fields we specified above
+//     };
 
-    // Upsert to Pinecone
-    await pineconeIndex.upsert([vector]);
+//     // Upsert to Pinecone
+//     await pineconeIndex.upsert([vector]);
     
-    console.log(`✓ Weather data successfully added to Pinecone for ${location.name}`);
-  } catch (error) {
-    console.error(`Error adding weather data to Pinecone for ${location.name}:`, error);
-    throw error;
-  }
-}
+//     console.log(`✓ Weather data successfully added to Pinecone for ${location.name}`);
+//   } catch (error) {
+//     console.error(`Error adding weather data to Pinecone for ${location.name}:`, error);
+//     throw error;
+//   }
+// }
 
 export async function updateWeatherData(locations: { lat: number; lon: number; name: string }[]) {
   try {
