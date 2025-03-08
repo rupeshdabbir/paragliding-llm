@@ -3,6 +3,7 @@ import { Document } from '@langchain/core/documents';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { fetchWeatherForecast, WeatherData } from './openMeteo';
+import { Location } from '../types';
 
 const BATCH_SIZE = 20; // Process documents in smaller batches
 

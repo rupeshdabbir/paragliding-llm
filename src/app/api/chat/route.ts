@@ -4,6 +4,7 @@ import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { NextRequest, NextResponse } from 'next/server';
+import { Location } from '../../../types';
 
 // Initialize Pinecone
 const initPinecone = async () => {
