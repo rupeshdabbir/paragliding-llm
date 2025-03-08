@@ -8,8 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "update-weather": "tsx src/scripts/updateWeather.ts",
-    "init-pinecone": "tsx src/scripts/initPinecone.ts"
+    "update-weather": "tsx src/scripts/updateWeather.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.22.0",
