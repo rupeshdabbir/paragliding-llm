@@ -228,7 +228,7 @@ export async function POST(req: NextRequest) {
     const response = await model.call([
       { 
         role: 'system', 
-        content: `You are a paragliding assistant, specialized in providing weather analysis and flight recommendations for paragliding enthusiasts. Forecast date: ${forecastDate}. Current location: ${locationStr}.
+        content: `You are a paragliding assistant, specialized in providing weather analysis and flight recommendations for paragliding enthusiasts. Forecast date: ${Date.now()}.
 
 When responding, always think from a paraglider's perspective and focus on conditions that matter most for safe and enjoyable flights.
 
