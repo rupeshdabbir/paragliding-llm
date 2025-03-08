@@ -13,15 +13,109 @@ const initPinecone = async () => {
   return pinecone;
 };
 
-function calculateFlightConditions(weatherData: any) {
-  // Extract relevant weather parameters
-  const windSpeed = weatherData['wind_u-surface'] && weatherData['wind_v-surface'] 
-    ? Math.sqrt(Math.pow(weatherData['wind_u-surface'][0], 2) + Math.pow(weatherData['wind_v-surface'][0], 2)) * 2.237
-    : 0;
+interface WeatherHour {
+  timestamp: Date;
+  windSpeed10m: number;
+  windDirection10m: number;
+  totalCloudCover: number;
+  visibility: number;
+}
+
+// Helper function to format date as MM/DD/YYYY only
+function formatSimpleDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+}
+
+// Helper function to get date only string for comparison
+function getDateString(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function parseDateFromQuery(message: string): string | null {
+  // Create dates
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
   
-  const lowClouds = (weatherData['lclouds-surface']?.[0] ?? 0) * 100;
-  const midClouds = (weatherData['mclouds-surface']?.[0] ?? 0) * 100;
-  const highClouds = (weatherData['hclouds-surface']?.[0] ?? 0) * 100;
+  // Convert message to lowercase for easier matching
+  const lowerMessage = message.toLowerCase();
+  
+  // Handle relative dates
+  if (lowerMessage.includes('tomorrow')) {
+    const dateStr = formatSimpleDate(tomorrow);
+    console.log('Target date:', dateStr);
+    return dateStr;
+  }
+  
+  if (lowerMessage.includes('this weekend')) {
+    const saturday = new Date();
+    saturday.setDate(today.getDate() + (6 - today.getDay())); // Get next Saturday
+    return formatSimpleDate(saturday);
+  }
+  
+  // Handle specific days of the week
+  const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  for (const day of daysOfWeek) {
+    if (lowerMessage.includes(day)) {
+      const targetDayIndex = daysOfWeek.indexOf(day);
+      const currentDayIndex = today.getDay();
+      const daysUntilTarget = (targetDayIndex - currentDayIndex + 7) % 7;
+      const targetDate = new Date();
+      targetDate.setDate(today.getDate() + daysUntilTarget);
+      return formatSimpleDate(targetDate);
+    }
+  }
+  
+  return null;
+}
+
+function calculateFlightConditions(weatherData: any, queryDateStr?: string) {
+  if (!weatherData || !weatherData.weatherData || !weatherData.weatherData.length) {
+    return null;
+  }
+
+  // Get the target date string
+  const targetDateStr = queryDateStr || formatSimpleDate(new Date());
+  console.log('Target date:', targetDateStr);
+
+  // Convert timestamps to date strings
+  const weatherDataWithDates = weatherData.weatherData.map((hour: any) => ({
+    ...hour,
+    dateStr: formatSimpleDate(new Date(hour.timestamp))
+  }));
+
+  // Group weather data by date
+  const weatherByDate = weatherDataWithDates.reduce((acc: any, hour: any) => {
+    if (!acc[hour.dateStr]) {
+      acc[hour.dateStr] = [];
+    }
+    acc[hour.dateStr].push(hour);
+    return acc;
+  }, {});
+
+  // Get data for target date
+  const targetDayData = weatherByDate[targetDateStr] || [];
+
+  if (targetDayData.length === 0) {
+    console.log('No data found for target date:', targetDateStr);
+    console.log('Available dates:', Object.keys(weatherByDate));
+    return null;
+  }
+
+  // Get the first hour's data for the target date
+  const currentHour = targetDayData[0];
+  if (!currentHour) {
+    return null;
+  }
+
+  // Extract relevant weather parameters
+  const windSpeed = currentHour.windSpeed10m;
+  const windDirection = currentHour.windDirection10m;
+  const cloudCover = currentHour.totalCloudCover;
+  const visibility = currentHour.visibility;
   
   // Calculate flight conditions score (0-100)
   let score = 100;
@@ -32,9 +126,12 @@ function calculateFlightConditions(weatherData: any) {
   else if (windSpeed > 15) score -= 20;
   
   // Cloud coverage factors
-  const totalCloudCoverage = (lowClouds + midClouds + highClouds) / 3;
-  if (totalCloudCoverage > 80) score -= 30;
-  else if (totalCloudCoverage > 60) score -= 20;
+  if (cloudCover > 80) score -= 30;
+  else if (cloudCover > 60) score -= 20;
+  
+  // Visibility factors
+  if (visibility < 3) score -= 30;
+  else if (visibility < 5) score -= 20;
   
   // Determine recommendation based on score
   let recommendation: 'Low' | 'Medium' | 'High';
@@ -46,10 +143,8 @@ function calculateFlightConditions(weatherData: any) {
     recommendation,
     confidence: score,
     windSpeed,
-    windDirection: ((Math.atan2(
-      weatherData['wind_v-surface']?.[0] ?? 0,
-      weatherData['wind_u-surface']?.[0] ?? 0
-    ) * 180 / Math.PI + 180) % 360)
+    windDirection,
+    timestamp: currentHour.timestamp // Include the actual forecast timestamp
   };
 }
 
@@ -87,33 +182,59 @@ export async function POST(req: NextRequest) {
       { pineconeIndex }
     );
 
+    console.log('REMOVE: Message for Similary Search:', message);
+
     // Perform similarity search
     const similarDocs = await vectorStore.similaritySearch(message, 3);
 
-    // Get the most recent weather data from the similar documents
-    const weatherData = similarDocs[0]?.metadata?.weatherData;
-    const flightConditions = weatherData ? calculateFlightConditions(weatherData) : null;
+    console.log('REMOVE: Similar docs:', similarDocs);
 
+    // Get the most recent weather data from the similar documents
+    const weatherData = similarDocs[0]?.metadata;
+    console.log('REMOVE: Weather data:', weatherData);
+    
+    // Parse the date from the query - now returns a string
+    const targetDateStr = parseDateFromQuery(message);
+    console.log('Target date - parseDateFromQuery:', targetDateStr);
+    const flightConditions = weatherData ? calculateFlightConditions(weatherData, targetDateStr) : null;
+
+    console.log('REMOVE: Flight conditions:', flightConditions);
     // Generate response using context and user message
-    const context = similarDocs.map((doc: any) => doc.pageContent).join('\n');
-    const today = new Date().toLocaleDateString('en-US', { 
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const context = similarDocs.map((doc: any) => {
+      // Remove forecastStart and forecastEnd, keep only forecastPeriod
+      if (doc.metadata) {
+        const { forecastStart, forecastEnd, ...rest } = doc.metadata;
+        doc.metadata = rest;
+      }
+      return doc.pageContent;
+    }).join('\n');
+    
+    // Use the forecast timestamp for the date display
+    const forecastDate = flightConditions?.timestamp 
+      ? new Date(flightConditions.timestamp).toLocaleDateString('en-US', { 
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      : new Date().toLocaleDateString('en-US', { 
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
 
     const response = await model.call([
       { 
         role: 'system', 
-        content: `You are a paragliding assistant, specialized in providing weather analysis and flight recommendations for paragliding enthusiasts. Today is ${today}. Current location: ${locationStr}.
+        content: `You are a paragliding assistant, specialized in providing weather analysis and flight recommendations for paragliding enthusiasts. Forecast date: ${forecastDate}. Current location: ${locationStr}.
 
 When responding, always think from a paraglider's perspective and focus on conditions that matter most for safe and enjoyable flights.
 
 ## Current Weather Conditions
 ${flightConditions ? `
-- Wind Speed: ${flightConditions.windSpeed.toFixed(1)} mph
-- Wind Direction: ${flightConditions.windDirection.toFixed(0)}° (${getCardinalDirection(flightConditions.windDirection)})
+- Wind Speed: ${flightConditions.windSpeed} mph
+- Wind Direction: ${flightConditions.windDirection}° (${getCardinalDirection(flightConditions.windDirection)})
 - Flight Recommendation: ${flightConditions.recommendation}
 - Confidence Score: ${flightConditions.confidence.toFixed(0)}%` : ''}
 
@@ -122,7 +243,7 @@ ${flightConditions ? `
 Based on paragliding requirements:
 - **Flight Safety Level**: ${flightConditions.recommendation}
 - **Confidence**: ${flightConditions.confidence.toFixed(0)}%
-- **Wind Analysis**: ${flightConditions.windSpeed.toFixed(1)} mph at ${flightConditions.windDirection.toFixed(0)}°
+- **Wind Analysis**: ${flightConditions.windSpeed} mph at ${flightConditions.windDirection}°
 - **Safety Notes**: ${getSafetyNotes(flightConditions)}` : ''}
 
 **Important:** Always emphasize safety and remind pilots to:

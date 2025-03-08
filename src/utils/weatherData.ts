@@ -2,147 +2,81 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { Document } from '@langchain/core/documents';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
-import { PineconeStore } from '@langchain/pinecone';
+import { fetchWeatherForecast, WeatherData } from './openMeteo';
 
-// Windy API configuration
-const WINDY_API_KEY = 'yctyXpeQXeRxVLpUGSkUCfTjbVNR80Qk';
-if (!WINDY_API_KEY) {
-  throw new Error('WINDY_API_KEY environment variable is not set');
-}
+const BATCH_SIZE = 20; // Process documents in smaller batches
 
-const WINDY_API_URL = 'https://api.windy.com/api/point-forecast/v2';
-
-interface ForecastResult {
-  forecast: string;
-  metadata: {
-    forecastPeriod: string;
-    startDate: Date;
-    endDate: Date;
-    avgTemp: number;
-    maxTemp: number;
-    minTemp: number;
-    avgWindSpeed: number;
-    maxWindSpeed: number;
-    dataPoints: number;
-  };
-}
-
-async function fetchWindyForecast(lat: number, lon: number): Promise<ForecastResult> {
-  // Get current date and date 7 days from now
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);  // Start from beginning of today
-  const oneWeekFromNow = new Date(now);
-  oneWeekFromNow.setDate(now.getDate() + 7);
-
-  console.log('Requesting forecast from:', now.toLocaleString(), 'to:', oneWeekFromNow.toLocaleString());
-
-  const response = await fetch(WINDY_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      lat,
-      lon,
-      model: 'gfs',
-      parameters: [
-        'temp', 
-        'wind', 
-        'dewpoint', 
-        'precip', 
-        'pressure',
-        'lclouds',    // Low clouds (above 800hPa)
-        'mclouds',    // Medium clouds (between 450hPa and 800hPa)
-        'hclouds'     // High clouds (below 450hPa)
-      ],
-      key: WINDY_API_KEY,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Windy API error: ${response.statusText} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  console.log('API Response structure:', Object.keys(data));
-  console.log('Available parameters:', data.units ? Object.keys(data.units) : 'No units found');
-  
-  // Convert timestamps from milliseconds to seconds if needed
-  if (data.ts && data.ts[0] > 1e12) {
-    data.ts = data.ts.map((ts: number) => Math.floor(ts / 1000));
-  }
-  
-  // Log a summary of the data instead of the full response
-  console.log(`Received forecast data: ${data.ts?.length || 0} timestamps`);
-  const startDate = new Date(data.ts?.[0] * 1000);
-  const endDate = new Date(data.ts?.[data.ts.length - 1] * 1000);
-  console.log(`Forecast period: ${startDate.toLocaleString()} to ${endDate.toLocaleString()}`);
-  
-  // Format the forecast period for metadata
-  const forecastPeriod = `${startDate.toISOString()} to ${endDate.toISOString()}`;
-  
-  // Convert the forecast data into a readable format
-  const forecast = data.ts.map((timestamp: number, index: number) => {
-    const date = new Date(timestamp * 1000);
-    
-    // Calculate wind speed and direction from u and v components
-    const windU = data['wind_u-surface']?.[index] ?? 0;
-    const windV = data['wind_v-surface']?.[index] ?? 0;
-    const windSpeed = (Math.sqrt(Math.pow(windU, 2) + Math.pow(windV, 2)) * 2.237).toFixed(1);  // Convert to mph
-    const windDirection = ((Math.atan2(windV, windU) * 180 / Math.PI + 180) % 360).toFixed(0);
-    
-    // Get cloud coverage percentages
-    const lowClouds = data['lclouds-surface']?.[index] ?? 0;
-    const midClouds = data['mclouds-surface']?.[index] ?? 0;
-    const highClouds = data['hclouds-surface']?.[index] ?? 0;
-
-    // Convert temperature from Kelvin to Fahrenheit
-    const tempF = ((data['temp-surface']?.[index] - 273.15) * 9/5 + 32).toFixed(1);
-    
-    return `
-      Date: ${date.toLocaleDateString()}
-      Time: ${date.toLocaleTimeString()}
-      Temperature: ${tempF}°F
-      Wind Speed: ${windSpeed} mph
-      Wind Direction: ${windDirection}°
-      Cloud Coverage:
-        - Low Clouds: ${(lowClouds * 100).toFixed(0)}%
-        - Mid Clouds: ${(midClouds * 100).toFixed(0)}%
-        - High Clouds: ${(highClouds * 100).toFixed(0)}%
-      Dewpoint: ${((data['dewpoint-surface']?.[index] - 273.15) * 9/5 + 32).toFixed(1)}°F
-      Pressure: ${(data['pressure-surface']?.[index] / 100).toFixed(1)} hPa
-      Precipitation: ${(data['precip-surface']?.[index] * 1000).toFixed(1)} mm
-    `.trim();
-  }).join('\n\n');
-
-  // Calculate statistics in Fahrenheit
-  const temperatures = data['temp-surface'].map((t: number) => (t - 273.15) * 9/5 + 32);
-  const avgTemp = temperatures.reduce((a: number, b: number) => a + b, 0) / temperatures.length;
-  const maxTemp = Math.max(...temperatures);
-  const minTemp = Math.min(...temperatures);
-
-  const windSpeeds = data['wind_u-surface'].map((u: number, i: number) => {
-    const v = data['wind_v-surface'][i];
-    return Math.sqrt(Math.pow(u, 2) + Math.pow(v, 2)) * 2.237;  // Convert from m/s to mph
-  });
-  const avgWindSpeed = windSpeeds.reduce((a: number, b: number) => a + b, 0) / windSpeeds.length;
-  const maxWindSpeed = Math.max(...windSpeeds);
-  
-  return {
-    forecast,
-    metadata: {
-      forecastPeriod,
-      startDate,
-      endDate,
-      avgTemp,
-      maxTemp,
-      minTemp,
-      avgWindSpeed,
-      maxWindSpeed,
-      dataPoints: data.ts.length
+// Helper function to clean metadata
+function cleanMetadata(metadata: any) {
+  const clean: Record<string, string> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      clean[key] = value.toString();
     }
+  }
+  return clean;
+}
+
+// When preparing metadata for Pinecone
+function prepareMetadata(weatherData: any, location: Location) {
+  // Convert timestamps to Date objects and format them
+  const weatherDataWithDates = weatherData.hourly.time.map((timestamp: string, index: number) => ({
+    timestamp: new Date(timestamp),
+    windSpeed10m: weatherData.hourly.wind_speed_10m[index],
+    windDirection10m: weatherData.hourly.wind_direction_10m[index],
+    totalCloudCover: weatherData.hourly.cloud_cover[index],
+    visibility: weatherData.hourly.visibility[index],
+    // ... other weather parameters ...
+  }));
+
+  // Get the date range for the forecast period
+  const startDate = new Date(weatherData.hourly.time[0]);
+  const endDate = new Date(weatherData.hourly.time[weatherData.hourly.time.length - 1]);
+  
+  // Format as a single period string
+  const forecastPeriod = `${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`;
+
+  // Only include the fields we want to store in Pinecone
+  const metadata = {
+    location: {
+      name: location.name,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    },
+    forecastPeriod,
+    weatherData: weatherDataWithDates,
   };
+
+  // Return clean metadata without any additional fields
+  return metadata;
+}
+
+async function addWeatherDataToPinecone(weatherData: any, location: Location, pineconeIndex: any) {
+  try {
+    // Prepare metadata
+    const metadata = prepareMetadata(weatherData, location);
+    
+    // Create document text
+    const documentText = createDocumentText(metadata);
+    
+    // Generate embedding
+    const embedding = await generateEmbedding(documentText);
+    
+    // Prepare vector for Pinecone
+    const vector = {
+      id: `${location.name}-${Date.now()}`,
+      values: embedding,
+      metadata: metadata // This will only include the fields we specified above
+    };
+
+    // Upsert to Pinecone
+    await pineconeIndex.upsert([vector]);
+    
+    console.log(`✓ Weather data successfully added to Pinecone for ${location.name}`);
+  } catch (error) {
+    console.error(`Error adding weather data to Pinecone for ${location.name}:`, error);
+    throw error;
+  }
 }
 
 export async function updateWeatherData(locations: { lat: number; lon: number; name: string }[]) {
@@ -178,56 +112,87 @@ export async function updateWeatherData(locations: { lat: number; lon: number; n
       throw new Error(`Pinecone index dimension (${stats.dimension}) does not match embedding dimension (${testEmbedding.length}). Please recreate the index with the correct dimension.`);
     }
 
-    console.log('Creating vector store from existing index...');
-    const vectorStore = await PineconeStore.fromExistingIndex(embeddings, { pineconeIndex });
-
     // Fetch and process weather data for each location
     for (const location of locations) {
       console.log(`\nProcessing location: ${location.name}`);
       console.log(`Fetching weather data for ${location.name}...`);
-      const { forecast, metadata } = await fetchWindyForecast(location.lat, location.lon);
+      const { forecast, metadata } = await fetchWeatherForecast(location.lat, location.lon);
+      // console.log('Forecast:', forecast);
+      // console.log('Metadata:', metadata);
 
       console.log('Creating document with forecast data...');
       const doc = new Document({
         pageContent: `Weather forecast for ${location.name}:\n${forecast}`,
         metadata: {
-          source: 'windy.com',
+          source: 'open-meteo.com',
           type: 'weather_forecast',
           location: location.name,
-          latitude: location.lat,
-          longitude: location.lon,
+          latitude: location.lat.toString(),
+          longitude: location.lon.toString(),
           timestamp: new Date().toISOString(),
           forecastPeriod: metadata.forecastPeriod,
-          forecastStartDate: metadata.startDate.toISOString(),
-          forecastEndDate: metadata.endDate.toISOString(),
-          weatherStats: {
-            averageTemp: metadata.avgTemp.toFixed(1),
-            maxTemp: metadata.maxTemp.toFixed(1),
-            minTemp: metadata.minTemp.toFixed(1),
-            averageWindSpeed: metadata.avgWindSpeed.toFixed(1),
-            maxWindSpeed: metadata.maxWindSpeed.toFixed(1),
-            dataPoints: metadata.dataPoints
-          }
+          // forecastStartDate: metadata.startDate.toISOString(),
+          // forecastEndDate: metadata.endDate.toISOString(),
+          averageTemp: metadata.avgTemp.toFixed(1),
+          maxTemp: metadata.maxTemp.toFixed(1),
+          minTemp: metadata.minTemp.toFixed(1),
+          averageWindSpeed: metadata.avgWindSpeed.toFixed(1),
+          maxWindSpeed: metadata.maxWindSpeed.toFixed(1),
+          dataPoints: metadata.dataPoints.toString(),
+          hourlyData: metadata.weatherData.map(hour => ({
+            timestamp: hour.timestamp.toISOString(),
+            temperature: hour.temperature.toFixed(1),
+            windSpeed: hour.windSpeed10m.toFixed(1),
+            windDirection: hour.windDirection10m.toFixed(0),
+            cloudCover: hour.totalCloudCover.toFixed(1),
+            visibility: hour.visibility.toFixed(1),
+            pressure: hour.pressure.toFixed(1)
+          }))
         },
       });
 
       console.log('Splitting document into chunks...');
       const textSplitter = new CharacterTextSplitter({
-        chunkSize: 1000,
-        chunkOverlap: 200,
+        chunkSize: 4000,  // Increased chunk size to keep more data together
+        chunkOverlap: 400,  // Increased overlap to ensure continuity
       });
+
       const splitDocs = await textSplitter.splitDocuments([doc]);
       console.log(`Created ${splitDocs.length} chunks`);
 
-      // Verify embeddings before adding to Pinecone
-      console.log('Generating embeddings for chunks...');
-      const embeddingVectors = await Promise.all(
-        splitDocs.map(doc => embeddings.embedQuery(doc.pageContent))
-      );
-      console.log('Generated embeddings dimensions:', embeddingVectors.map(v => v.length));
+      // Process chunks in batches
+      console.log(`Adding documents to Pinecone in batches of ${BATCH_SIZE}...`);
+      for (let i = 0; i < splitDocs.length; i += BATCH_SIZE) {
+        const batch = splitDocs.slice(i, i + BATCH_SIZE);
+        console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(splitDocs.length / BATCH_SIZE)}...`);
+        
+        try {
+          // Generate embeddings for the batch
+          const batchEmbeddings = await Promise.all(
+            batch.map(doc => embeddings.embedQuery(doc.pageContent))
+          );
 
-      console.log('Adding documents to Pinecone...');
-      await vectorStore.addDocuments(splitDocs);
+          // Prepare vectors for Pinecone
+          const vectors = batch.map((doc, idx) => ({
+            id: `${location.name}-${i + idx}`,
+            values: batchEmbeddings[idx],
+            metadata: cleanMetadata({
+              ...doc.metadata,
+              text: doc.pageContent,
+              chunkIndex: idx.toString(),
+              totalChunks: splitDocs.length.toString()
+            })
+          }));
+
+          // Upsert vectors to Pinecone
+          await pineconeIndex.upsert(vectors);
+          console.log(`✓ Successfully added batch ${Math.floor(i / BATCH_SIZE) + 1}`);
+        } catch (error) {
+          console.error(`Error adding batch ${Math.floor(i / BATCH_SIZE) + 1}:`, error);
+          throw error;
+        }
+      }
+      
       console.log(`✓ Weather data successfully added to Pinecone for ${location.name}`);
     }
 
