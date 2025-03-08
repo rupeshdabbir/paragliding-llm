@@ -13,11 +13,6 @@ if (!globalThis.ReadableStream) {
 // Define locations for weather forecasts
 const locations = [
   {
-    lat: 37.7652,
-    lon: -122.2416,
-    name: 'Alameda'
-  },
-  {
     lat: 37.6684,
     lon: -122.4944,
     name: 'Mussel Rock State Park'
