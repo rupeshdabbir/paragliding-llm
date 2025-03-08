@@ -4,7 +4,6 @@ import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { NextRequest, NextResponse } from 'next/server';
-import { Location } from '../../../types';
 
 // Initialize Pinecone
 const initPinecone = async () => {
@@ -14,14 +13,6 @@ const initPinecone = async () => {
   return pinecone;
 };
 
-interface WeatherHour {
-  timestamp: Date;
-  windSpeed10m: number;
-  windDirection10m: number;
-  totalCloudCover: number;
-  visibility: number;
-}
-
 // Helper function to format date as MM/DD/YYYY only
 function formatSimpleDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -30,10 +21,6 @@ function formatSimpleDate(date: Date): string {
   return `${month}/${day}/${year}`;
 }
 
-// Helper function to get date only string for comparison
-function getDateString(date: Date): string {
-  return date.toISOString().split('T')[0];
-}
 
 function parseDateFromQuery(message: string): string | null {
   // Create dates

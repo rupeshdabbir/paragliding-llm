@@ -2,8 +2,7 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { Document } from '@langchain/core/documents';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
-import { fetchWeatherForecast, WeatherData } from './openMeteo';
-import { Location } from '../types';
+import { fetchWeatherForecast } from './openMeteo';
 
 const BATCH_SIZE = 20; // Process documents in smaller batches
 
@@ -17,68 +16,6 @@ function cleanMetadata(metadata: any) {
   }
   return clean;
 }
-
-// When preparing metadata for Pinecone
-function prepareMetadata(weatherData: any, location: Location) {
-  // Convert timestamps to Date objects and format them
-  const weatherDataWithDates = weatherData.hourly.time.map((timestamp: string, index: number) => ({
-    timestamp: new Date(timestamp),
-    windSpeed10m: weatherData.hourly.wind_speed_10m[index],
-    windDirection10m: weatherData.hourly.wind_direction_10m[index],
-    totalCloudCover: weatherData.hourly.cloud_cover[index],
-    visibility: weatherData.hourly.visibility[index],
-    // ... other weather parameters ...
-  }));
-
-  // Get the date range for the forecast period
-  const startDate = new Date(weatherData.hourly.time[0]);
-  const endDate = new Date(weatherData.hourly.time[weatherData.hourly.time.length - 1]);
-  
-  // Format as a single period string
-  const forecastPeriod = `${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`;
-
-  // Only include the fields we want to store in Pinecone
-  const metadata = {
-    location: {
-      name: location.name,
-      latitude: location.latitude,
-      longitude: location.longitude,
-    },
-    forecastPeriod,
-    weatherData: weatherDataWithDates,
-  };
-
-  // Return clean metadata without any additional fields
-  return metadata;
-}
-
-// async function addWeatherDataToPinecone(weatherData: any, location: Location, pineconeIndex: any) {
-//   try {
-//     // Prepare metadata
-//     const metadata = prepareMetadata(weatherData, location);
-    
-//     // Create document text
-//     const documentText = createDocumentText(metadata);
-    
-//     // Generate embedding
-//     const embedding = await generateEmbedding(documentText);
-    
-//     // Prepare vector for Pinecone
-//     const vector = {
-//       id: `${location.name}-${Date.now()}`,
-//       values: embedding,
-//       metadata: metadata // This will only include the fields we specified above
-//     };
-
-//     // Upsert to Pinecone
-//     await pineconeIndex.upsert([vector]);
-    
-//     console.log(`✓ Weather data successfully added to Pinecone for ${location.name}`);
-//   } catch (error) {
-//     console.error(`Error adding weather data to Pinecone for ${location.name}:`, error);
-//     throw error;
-//   }
-// }
 
 export async function updateWeatherData(locations: { lat: number; lon: number; name: string }[]) {
   try {
