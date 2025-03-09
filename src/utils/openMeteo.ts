@@ -222,7 +222,7 @@ ${dayData.map(hour => {
   }
 
   return `
-${hour.timestamp.toLocaleTimeString()}:
+${dateObj.toLocaleDateString()} (${dateObj.toLocaleDateString('en-US', { weekday: 'long' })}) - ${hour.timestamp.toLocaleTimeString()}:
 Flying Conditions: ${flyingConditions}${conditionsNote ? ` (${conditionsNote})` : ''}
 - Temperature: ${hour.temperature.toFixed(1)}°F
 - Apparent Temperature: ${hour.apparentTemperature.toFixed(1)}°F

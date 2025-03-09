@@ -60,7 +60,8 @@ function parseDateFromQuery(message: string): string | null {
 }
 
 function calculateFlightConditions(weatherData: any, queryDateStr?: string) {
-  if (!weatherData || !weatherData.weatherData || !weatherData.weatherData.length) {
+  console.log('REMOVE: Weather data:', weatherData);
+  if (!weatherData || !weatherData.weatherData || !weatherData.weatherData.length ) {
     return null;
   }
 
@@ -247,7 +248,7 @@ Based on paragliding requirements:
 3. Never fly beyond their skill level
 4. Have proper equipment and certification
 
-Use this format to help answer the questions`
+Use this format to help answer the questions ${context}`
       },
       { role: 'user', content: message }
     ]);
