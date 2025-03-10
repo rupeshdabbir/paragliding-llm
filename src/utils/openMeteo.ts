@@ -74,6 +74,11 @@ export interface ForecastResult {
 }
 
 export async function fetchWeatherForecast(lat: number, lon: number): Promise<ForecastResult> {
+  // Add validation to prevent undefined values
+  if (lat === undefined || lon === undefined) {
+    throw new Error('Invalid coordinates: latitude and longitude must be provided');
+  }
+  
   console.log('Requesting forecast for coordinates:', lat, lon);
 
   const url = "https://api.open-meteo.com/v1/forecast";
@@ -178,6 +183,7 @@ Daily breakdown:
 ${Object.entries(dataByDate).map(([date, dayData]) => {
   console.log('dataByDate::::', dataByDate);
   console.log('JUST DATE::::', date);
+  const simpleDate = date;
   const dateObj = new Date(date);
   
   // Calculate daily statistics
