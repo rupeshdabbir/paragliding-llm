@@ -3,39 +3,49 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { generateEmbedding } from '@/utils/embeddings';
 
-// Helper function to format date as YYYY-MM-DD
+// Helper function to format date as YYYY-MM-DD in PST
 function formatDateYYYYMMDD(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Get date components in PST
+  const pstDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  const year = pstDate.getFullYear();
+  const month = String(pstDate.getMonth() + 1).padStart(2, '0');
+  const day = String(pstDate.getDate()).padStart(2, '0');
+  
+  // Format as YYYY-MM-DD
+  return `${year}-${month}-${day}`;
 }
 
 // Helper function to parse date from query
 function parseDateFromQuery(message: string): string | null {
-  // Create dates
-  const today = new Date();
-  const tomorrow = new Date();
-  tomorrow.setDate(today.getDate() + 1);
+  // Create dates in PST timezone
+  const nowPST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  console.log('Current PST time:', nowPST.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  
+  const todayPST = new Date(nowPST);
+  const tomorrowPST = new Date(nowPST);
+  tomorrowPST.setDate(todayPST.getDate() + 1);
   
   // Convert message to lowercase for easier matching
   const lowerMessage = message.toLowerCase();
   
   // Handle relative dates
   if (lowerMessage.includes('tomorrow')) {
-    const targetDate = formatDateYYYYMMDD(tomorrow);
-    console.log('Parsed date (tomorrow):', targetDate);
+    const targetDate = formatDateYYYYMMDD(tomorrowPST);
+    console.log('Parsed date (tomorrow PST):', targetDate);
     return targetDate;
   }
   
   if (lowerMessage.includes('today')) {
-    const targetDate = formatDateYYYYMMDD(today);
-    console.log('Parsed date (today):', targetDate);
+    const targetDate = formatDateYYYYMMDD(todayPST);
+    console.log('Parsed date (today PST):', targetDate);
     return targetDate;
   }
   
   if (lowerMessage.includes('this weekend')) {
-    const saturday = new Date();
-    saturday.setDate(today.getDate() + (6 - today.getDay())); // Get next Saturday
+    const saturday = new Date(todayPST);
+    saturday.setDate(todayPST.getDate() + (6 - todayPST.getDay())); // Get next Saturday
     const targetDate = formatDateYYYYMMDD(saturday);
-    console.log('Parsed date (weekend):', targetDate);
+    console.log('Parsed date (weekend PST):', targetDate);
     return targetDate;
   }
   
@@ -44,12 +54,12 @@ function parseDateFromQuery(message: string): string | null {
   for (const day of daysOfWeek) {
     if (lowerMessage.includes(day)) {
       const targetDayIndex = daysOfWeek.indexOf(day);
-      const currentDayIndex = today.getDay();
+      const currentDayIndex = todayPST.getDay();
       const daysUntilTarget = (targetDayIndex - currentDayIndex + 7) % 7;
-      const targetDate = new Date();
-      targetDate.setDate(today.getDate() + daysUntilTarget);
+      const targetDate = new Date(todayPST);
+      targetDate.setDate(todayPST.getDate() + daysUntilTarget);
       const formattedDate = formatDateYYYYMMDD(targetDate);
-      console.log(`Parsed date (${day}):`, formattedDate);
+      console.log(`Parsed date (${day} PST):`, formattedDate);
       return formattedDate;
     }
   }
@@ -75,8 +85,9 @@ function parseDateFromQuery(message: string): string | null {
         }
         
         if (!isNaN(date.getTime())) {
+          // Convert to PST
           const formattedDate = formatDateYYYYMMDD(date);
-          console.log('Parsed date (explicit):', formattedDate);
+          console.log('Parsed date (explicit PST):', formattedDate);
           return formattedDate;
         }
       } catch (e) {
@@ -85,46 +96,53 @@ function parseDateFromQuery(message: string): string | null {
     }
   }
   
-  // Default to today if no date is found
-  const defaultDate = formatDateYYYYMMDD(today);
-  console.log('No date found in query, using default (today):', defaultDate);
+  // Default to today in PST if no date is found
+  const defaultDate = formatDateYYYYMMDD(todayPST);
+  console.log('No date found in query, using default (today PST):', defaultDate);
   return defaultDate;
 }
 
 function calculateFlightConditions(weatherData: any) {
-  if (!weatherData || !weatherData.metadata || !weatherData.metadata.hourlyData) {
+  if (!weatherData?.metadata) {
     console.log('Invalid weather data structure:', weatherData);
     return null;
   }
 
-  // Get the first hour's data
-  const currentHour = weatherData.metadata.hourlyData[0];
-  if (!currentHour) {
-    return null;
-  }
-
-  // Extract weather parameters
-  const windSpeed = parseFloat(currentHour.windSpeed);
-  const windDirection = parseFloat(currentHour.windDirection);
-  const cloudCover = parseFloat(currentHour.cloudCover);
-  const visibility = parseFloat(currentHour.visibility);
+  // Extract relevant weather parameters from metadata
+  const windSpeed = parseFloat(weatherData.metadata.averageWindSpeed);
+  const maxWindSpeed = parseFloat(weatherData.metadata.maxWindSpeed);
+  const cloudCover = parseFloat(weatherData.metadata.averageCloudCover);
+  const temperature = parseFloat(weatherData.metadata.averageTemp);
+  const date = weatherData.metadata.forecastDate;
+  const dayOfWeek = weatherData.metadata.dayOfWeek;
 
   // Calculate flight conditions score
   let score = 0;
   let reasons = [];
 
   // Wind speed assessment (0-15 mph ideal, 15-20 marginal, >20 not suitable)
-  if (windSpeed <= 15) score += 0.4;
-  else if (windSpeed <= 20) score += 0.2;
-  if (windSpeed > 20) reasons.push('Wind speed too high');
+  if (windSpeed <= 15) {
+    score += 0.4;
+  } else if (windSpeed <= 20) {
+    score += 0.2;
+  }
+  if (maxWindSpeed > 20) {
+    reasons.push('Maximum wind speed too high');
+  }
 
   // Cloud cover assessment (<70% ideal)
-  if (cloudCover < 70) score += 0.3;
-  else reasons.push('Cloud cover too high');
+  if (cloudCover < 70) {
+    score += 0.3;
+  } else {
+    reasons.push('Cloud cover too high');
+  }
 
-  // Visibility assessment (>5 miles ideal)
-  if (visibility > 5) score += 0.3;
-  else reasons.push('Poor visibility');
+  // Temperature assessment (40-80°F ideal)
+  if (temperature >= 40 && temperature <= 80) {
+    score += 0.3;
+  } else {
+    reasons.push(temperature < 40 ? 'Temperature too cold' : 'Temperature too hot');
+  }
 
   // Determine recommendation
   let recommendation: 'Low' | 'Medium' | 'High';
@@ -133,8 +151,12 @@ function calculateFlightConditions(weatherData: any) {
   else recommendation = 'Low';
 
   return {
+    date,
+    dayOfWeek,
+    temperature,
     windSpeed,
-    windDirection,
+    maxWindSpeed,
+    cloudCover,
     flightConditions: {
       recommendation,
       confidence: score
@@ -184,9 +206,7 @@ export async function POST(req: NextRequest) {
     const flightConditions = weatherData ? calculateFlightConditions(weatherData) : null;
 
     // Generate response using context and user message
-    const context = similarDocs.map((doc: any) => {
-      return doc.metadata.text;
-    }).join('\n\n');
+    const context = similarDocs.map((doc: any) => doc.metadata.text).join('\n\n');
 
     // Initialize Google Generative AI
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
@@ -204,11 +224,12 @@ Here is the weather forecast information for ${targetDate}:
 ${context || "No weather data available for this date."}
 
 ${flightConditions ? `
-Current weather conditions:
-- Wind Speed: ${flightConditions.windSpeed} mph
-- Wind Direction: ${flightConditions.windDirection}°
+Current weather conditions for ${flightConditions.dayOfWeek}, ${flightConditions.date}:
+- Temperature: ${flightConditions.temperature}°F
+- Wind Speed: ${flightConditions.windSpeed} mph (Max: ${flightConditions.maxWindSpeed} mph)
+- Cloud Cover: ${flightConditions.cloudCover}%
 - Flight Conditions: ${flightConditions.flightConditions.recommendation} (Confidence: ${(flightConditions.flightConditions.confidence * 100).toFixed(0)}%)
-- Reasons: ${flightConditions.reasons.join(', ')}
+- Assessment: ${flightConditions.reasons.join(', ')}
 ` : 'No specific weather conditions available for this query.'}
 
 Please provide a helpful response about the weather and flying conditions based on this information. 
