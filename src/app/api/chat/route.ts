@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
     // Search Pinecone with metadata filter for the specific date
     const queryResponse = await index.query({
       vector: embedding,
-      topK: 5,
+      topK: 15,
       filter: {
         forecastDate: { $eq: targetDate }
       },
@@ -199,6 +199,7 @@ export async function POST(req: NextRequest) {
     });
 
     const similarDocs = queryResponse.matches || [];
+    console.log('Similar documents:', similarDocs);
     console.log(`Found ${similarDocs.length} similar documents for date ${targetDate}`);
 
     // Get the most recent weather data from the similar documents

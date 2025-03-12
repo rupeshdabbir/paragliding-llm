@@ -72,6 +72,8 @@ I'm here to help you with weather conditions and paragliding advice. Feel free t
         }
       } : undefined;
 
+      console.info('Weather Data:', weatherData);
+
       const assistantMessage: Message = { 
         role: 'assistant' as const, 
         content: data.response,

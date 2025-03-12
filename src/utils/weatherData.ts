@@ -7,12 +7,16 @@ import { Location } from '../types';
 
 const BATCH_SIZE = 20; // Process documents in smaller batches
 
-// Helper function to format date as MM/DD/YYYY
-function formatSimpleDate(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${month}/${day}/${year}`;
+// Helper function to format date as YYYY-MM-DD in PST
+function formatDatePST(date: Date): string {
+  // Get date components in PST
+  const pstDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  const year = pstDate.getFullYear();
+  const month = String(pstDate.getMonth() + 1).padStart(2, '0');
+  const day = String(pstDate.getDate()).padStart(2, '0');
+  
+  // Format as YYYY-MM-DD
+  return `${year}-${month}-${day}`;
 }
 
 // Helper function to clean metadata
@@ -31,10 +35,14 @@ function createDailyDocument(location: Location,
                             date: string, 
                             dayData: any[], 
                             forecastTimestamp: string) {
-  // Format the date for display
+  // Convert to PST and format dates
   const dateObj = new Date(date);
-  const formattedDate = formatSimpleDate(dateObj);
-  const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+  const pstDate = new Date(dateObj.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  const formattedDate = formatDatePST(pstDate);
+  const dayOfWeek = pstDate.toLocaleDateString('en-US', { 
+    timeZone: 'America/Los_Angeles',
+    weekday: 'long' 
+  });
   
   // Calculate daily statistics
   const dayTemps = dayData.map(h => h.temperature);
@@ -52,6 +60,14 @@ Daily Summary:
 
 Hourly Breakdown:
 ${dayData.map(hour => {
+  // Convert hour timestamp to PST
+  const hourPST = new Date(hour.timestamp).toLocaleString('en-US', { 
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true
+  });
+
   // Assess flying conditions for this hour
   const windSpeed = hour.windSpeed10m;
   const windGusts = hour.windGusts10m;
@@ -82,7 +98,7 @@ ${dayData.map(hour => {
   const hourTime = new Date(hour.timestamp).toLocaleTimeString();
   
   return `
-${hourTime}:
+${formattedDate} ${hourPST}:
 Flying Conditions: ${flyingConditions}${conditionsNote ? ` (${conditionsNote})` : ''}
 - Temperature: ${hour.temperature.toFixed(1)}°F
 - Apparent Temperature: ${hour.apparentTemperature.toFixed(1)}°F
@@ -119,9 +135,7 @@ Flying Conditions: ${flyingConditions}${conditionsNote ? ` (${conditionsNote})` 
       location: location.name,
       latitude: location.latitude.toString(),
       longitude: location.longitude.toString(),
-      // Add the forecastDate field for filtering
-      forecastDate: date, // This is the YYYY-MM-DD format date string
-      // forecastTimestamp: forecastTimestamp, // When the forecast was generated
+      forecastDate: formattedDate, // Using YYYY-MM-DD format in PST
       dayOfWeek: dayOfWeek,
       averageTemp: (dayTemps.reduce((a, b) => a + b, 0) / dayTemps.length).toFixed(1),
       maxTemp: Math.max(...dayTemps).toFixed(1),
@@ -187,13 +201,13 @@ export async function updateWeatherData(locations: Location[]) {
       
       // Process each day in dataByDate
       for (const [date, dayData] of Object.entries(forecast.metadata.dataByDate)) {
-        console.log(`Creating document for date: ${date}`);
+        console.log(`Creating document for date (PST): ${formatDatePST(new Date(date))}`);
         
         // Create a document for this specific day
         const dailyDoc = createDailyDocument(
           location, 
-          date,  // This is the forecastDate in YYYY-MM-DD format
-          dayData, 
+          date,
+          dayData,
           forecastTimestamp
         );
         

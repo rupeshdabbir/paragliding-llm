@@ -74,6 +74,10 @@ interface WeatherGaugesProps {
 }
 
 const WeatherGauges: React.FC<WeatherGaugesProps> = ({ windSpeed, windDirection, flightConditions }) => {
+  console.log('Wind Speed:', windSpeed);
+  console.log('Wind Direction:', windDirection);
+  console.log('Flight Conditions:', flightConditions);
+
   const getDirectionLabel = (degrees: number): string => {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     const index = Math.round(((degrees % 360) / 45)) % 8;
