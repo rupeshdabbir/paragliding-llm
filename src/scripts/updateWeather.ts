@@ -54,7 +54,22 @@ async function main() {
         name: "Ed Levin County Park",
         latitude: 37.4666,
         longitude: -121.8569
-      }
+      },
+      {
+        name: "Mount Diablo State Park",
+        latitude: 37.8817,
+        longitude: -121.9143
+      },
+      {
+        name: "Mount Tamalpais State Park",
+        latitude: 37.9038,
+        longitude: -122.5961
+      },
+      {
+        name: "Mission Peak",
+        latitude: 37.5124,
+        longitude: -121.8805
+      },
     ];
 
     // Update weather data for all locations
