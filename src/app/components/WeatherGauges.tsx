@@ -32,6 +32,72 @@ const Gauge: React.FC<GaugeProps> = ({ value, maxValue, label, color, confidence
     );
   }
 
+  if (confidence) {
+    const getConfidenceColor = (confidence: 'Low' | 'Medium' | 'High') => {
+      switch (confidence) {
+        case 'High':
+          return {
+            bg: 'bg-green-50',
+            border: 'border-green-200',
+            text: 'text-green-700',
+            icon: 'text-green-500',
+            progress: 'bg-green-500'
+          };
+        case 'Medium':
+          return {
+            bg: 'bg-yellow-50',
+            border: 'border-yellow-200',
+            text: 'text-yellow-700',
+            icon: 'text-yellow-500',
+            progress: 'bg-yellow-500'
+          };
+        case 'Low':
+          return {
+            bg: 'bg-red-50',
+            border: 'border-red-200',
+            text: 'text-red-700',
+            icon: 'text-red-500',
+            progress: 'bg-red-500'
+          };
+      }
+    };
+
+    const colors = getConfidenceColor(confidence);
+    const getConfidenceIcon = (confidence: 'Low' | 'Medium' | 'High') => {
+      switch (confidence) {
+        case 'High':
+          return '✓';
+        case 'Medium':
+          return '!';
+        case 'Low':
+          return '✕';
+      }
+    };
+
+    return (
+      <div className={`flex flex-col items-center p-4 rounded-lg shadow-md border ${colors.bg} ${colors.border}`}>
+        <div className="text-lg font-semibold mb-2">{label}</div>
+        <div className="flex items-center space-x-2 mb-2">
+          <span className={`text-2xl font-bold ${colors.text}`}>
+            {getConfidenceIcon(confidence)}
+          </span>
+          <span className={`text-xl font-bold ${colors.text}`}>
+            {confidence}
+          </span>
+        </div>
+        <div className="relative w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className={`absolute h-full ${colors.progress} transition-all duration-500`}
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+        <div className="mt-2 text-sm text-gray-600">
+          Confidence: {value}%
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-md">
       <div className="text-lg font-semibold mb-2">{label}</div>
@@ -47,17 +113,7 @@ const Gauge: React.FC<GaugeProps> = ({ value, maxValue, label, color, confidence
           }}
         />
         <div className="mt-2 text-center">
-          {confidence ? (
-            <span className={`font-medium ${
-              confidence === 'High' ? 'text-green-600' :
-              confidence === 'Medium' ? 'text-yellow-600' :
-              'text-red-600'
-            }`}>
-              {confidence}
-            </span>
-          ) : (
-            <span>{value} {label.includes('Speed') ? 'mph' : '%'}</span>
-          )}
+          <span>{value} {label.includes('Speed') ? 'mph' : '%'}</span>
         </div>
       </div>
     </div>
