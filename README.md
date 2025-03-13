@@ -18,15 +18,86 @@ A sophisticated AI-powered weather assistant for paragliding enthusiasts, provid
 
 ## 🏗️ Architecture
 
+### System Overview
 ```mermaid
 graph TD
-    A[User Interface] -->|Query| B[Chat API]
-    B -->|Fetch Data| C[Pinecone Vector DB]
-    B -->|Weather Data| D[Open-Meteo API]
-    D -->|HRRR Model| E[Weather Data]
-    E -->|Store| C
-    C -->|Retrieve| B
-    B -->|Response| A
+    subgraph Frontend
+        UI[User Interface]
+        UI -->|Query| API[Chat API]
+    end
+
+    subgraph Backend
+        API -->|Fetch Data| VDB[Pinecone Vector DB]
+        API -->|Weather Data| WAPI[Open-Meteo API]
+        WAPI -->|HRRR Model| WD[Weather Data]
+        WD -->|Store| VDB
+        VDB -->|Retrieve| API
+        API -->|Response| UI
+    end
+
+    subgraph AI Layer
+        API -->|Process| LLM[Gemini AI]
+        LLM -->|Generate| API
+    end
+
+    style Frontend fill:#f8fafc,stroke:#1e293b,stroke-width:2px
+    style Backend fill:#f1f5f9,stroke:#1e293b,stroke-width:2px
+    style AI Layer fill:#e2e8f0,stroke:#1e293b,stroke-width:2px
+```
+
+### Technology Stack
+```mermaid
+graph LR
+    subgraph Frontend
+        Next[Next.js]
+        React[React]
+        Tailwind[Tailwind CSS]
+    end
+
+    subgraph Backend
+        API[Next.js API Routes]
+        Pinecone[Pinecone DB]
+        OpenMeteo[Open-Meteo API]
+    end
+
+    subgraph AI
+        Gemini[Gemini AI]
+        Embeddings[Google AI Embeddings]
+    end
+
+    Next --> React
+    React --> Tailwind
+    API --> Pinecone
+    API --> OpenMeteo
+    API --> Gemini
+    Gemini --> Embeddings
+    Embeddings --> Pinecone
+
+    style Frontend fill:#f8fafc,stroke:#1e293b,stroke-width:2px
+    style Backend fill:#f1f5f9,stroke:#1e293b,stroke-width:2px
+    style AI fill:#e2e8f0,stroke:#1e293b,stroke-width:2px
+```
+
+### Data Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Chat UI
+    participant A as API Route
+    participant G as Gemini AI
+    participant P as Pinecone
+    participant W as Weather API
+    
+    U->>C: Submit Query
+    C->>A: POST /api/chat
+    A->>P: Query Similar Documents
+    P-->>A: Return Weather Data
+    A->>W: Fetch Current Weather
+    W-->>A: Return Forecast
+    A->>G: Process with LLM
+    G-->>A: Generate Response
+    A-->>C: Return Response
+    C-->>U: Display Results
 ```
 
 ## 🛠️ Tech Stack
