@@ -75,7 +75,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `# Welcome to Paragliding AI! 🪂
+      content: `# Welcome to Paragliding AI Assistant! 🪂 - α
 
 I'm here to help you with weather conditions and paragliding advice. Feel free to ask about current conditions or flying recommendations.
 
@@ -251,11 +251,12 @@ Try clicking one of the sample questions below, or ask your own!
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Message Paragliding AI..."
                   className="w-full h-12 sm:h-14 pl-4 pr-12 py-2 
-                           text-base sm:text-lg bg-gray-50/80
+                           text-base sm:text-lg bg-white
                            border border-gray-200 rounded-2xl
                            focus:outline-none focus:ring-2 focus:ring-blue-500
                            focus:border-transparent transition-all duration-200
-                           placeholder-gray-400"
+                           placeholder-gray-500 text-gray-900
+                           shadow-sm hover:shadow-md"
                   disabled={isLoading}
                 />
                 {input.length > 0 && (
