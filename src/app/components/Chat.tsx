@@ -21,6 +21,15 @@ interface Message {
   };
 }
 
+// Sample queries that users can click on
+const sampleQueries = [
+  "Can I fly in Mussel Rock today?",
+  "What's the weather like in Mussel Rock tomorrow?",
+  "Is it good to fly in Ed Levin this weekend?",
+  "How's the wind at Alameda right now?",
+  "What are the conditions at Blue Rock on Friday?"
+];
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -28,6 +37,8 @@ export default function Chat() {
       content: `# Welcome to Paragliding AI! 🪂
 
 I'm here to help you with weather conditions and paragliding advice. Feel free to ask about current conditions or flying recommendations.
+
+Try clicking one of the sample questions below, or ask your own!
 
 **Note:** This tool is in alpha stage, so always use your own judgment for flying decisions.`
     }
@@ -39,8 +50,8 @@ I'm here to help you with weather conditions and paragliding advice. Feel free t
     e.preventDefault();
     if (!input.trim()) return;
 
-    const userMessage: Message = { role: 'user' as const, content: input };
-    setMessages((prev: Message[]): Message[] => [...prev, userMessage]);
+    const userMessage: Message = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
@@ -72,24 +83,32 @@ I'm here to help you with weather conditions and paragliding advice. Feel free t
         }
       } : undefined;
 
-      console.info('Weather Data:', weatherData);
-
       const assistantMessage: Message = { 
-        role: 'assistant' as const, 
+        role: 'assistant',
         content: data.response,
         weatherData
       };
-      setMessages((prev: Message[]): Message[] => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error:', error);
       const errorMessage: Message = { 
-        role: 'assistant' as const, 
-        content: 'Sorry, there was an error processing your request.' 
+        role: 'assistant',
+        content: 'Sorry, there was an error processing your request.'
       };
-      setMessages((prev: Message[]): Message[] => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Function to handle clicking a sample query
+  const handleSampleQuery = (query: string) => {
+    setInput(query);
+  };
+
+  // Add a function to check if there are any user messages
+  const hasUserMessages = () => {
+    return messages.some(message => message.role === 'user');
   };
 
   const markdownComponents: Components = {
@@ -128,8 +147,9 @@ I'm here to help you with weather conditions and paragliding advice. Feel free t
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-3xl mx-auto p-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4 w-full">
+    <div className="flex flex-col h-screen max-w-3xl mx-auto p-4">
+      {/* Messages Section */}
+      <div className="flex-1 overflow-y-auto space-y-4 mb-20">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -171,31 +191,67 @@ I'm here to help you with weather conditions and paragliding advice. Feel free t
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-gray-100 rounded-lg p-4 animate-pulse">
-              Thinking... 🪂🪂🪂
+              Thinking... 🪂
             </div>
           </div>
         )}
       </div>
-      <div className="fixed bottom-0 w-[71%] bg-white p-4">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Message Paragliding AI..."
-            className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isLoading}
-            style={{ height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger' }}
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            style={{ height: '50px' }}
-          >
-            Send
-          </button>
-        </form>
+
+      {/* Fixed bottom section containing sample queries and input */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+        <div className="max-w-3xl mx-auto">
+          {/* Sample Queries Section */}
+          {!hasUserMessages() && (
+            <div className="px-4 py-2 border-b border-gray-100">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm text-gray-500">Try asking:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {sampleQueries.map((query, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSampleQuery(query)}
+                    className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 
+                             text-gray-700 rounded-full text-sm border 
+                             border-gray-200 transition-colors duration-200
+                             hover:border-gray-300 focus:outline-none 
+                             focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  >
+                    {query}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Input Form */}
+          <div className="p-4">
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Message Paragliding AI..."
+                className="flex-1 p-2 border border-gray-300 rounded-lg 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500
+                         shadow-sm"
+                disabled={isLoading}
+                style={{ height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger' }}
+              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg 
+                         hover:bg-blue-600 disabled:opacity-50 
+                         disabled:cursor-not-allowed font-medium
+                         shadow-sm transition-colors duration-200"
+                style={{ height: '50px' }}
+              >
+                Send
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );
