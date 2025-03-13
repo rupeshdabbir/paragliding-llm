@@ -30,6 +30,14 @@ const sampleQueries = [
   "What are the conditions at Blue Rock on Friday?"
 ];
 
+// Add type definition before markdownComponents
+type CodeProps = {
+  node?: any;
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+};
+
 // Define markdown components with proper styling
 const markdownComponents: Components = {
   // Style headings
@@ -50,8 +58,8 @@ const markdownComponents: Components = {
   ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside mb-4" />,
   li: ({node, ...props}) => <li {...props} className="mb-1" />,
   
-  // Style code blocks
-  code: ({node, inline, ...props}) => (
+  // Style code blocks with proper typing
+  code: ({node, inline, ...props}: CodeProps) => (
     inline ? 
       <code {...props} className="bg-gray-100 rounded px-1 py-0.5 text-sm font-mono" /> :
       <code {...props} className="block bg-gray-100 rounded p-2 text-sm font-mono overflow-x-auto" />
@@ -197,7 +205,7 @@ Try clicking one of the sample questions below, or ask your own!
                     <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
                     <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
                   </div>
-                  <span className="text-gray-600">Thinking...</span>
+                  <span className="text-gray-600">Thinking...🪂</span>
                 </div>
               </div>
             </div>
