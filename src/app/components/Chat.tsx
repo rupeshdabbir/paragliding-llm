@@ -30,6 +30,39 @@ const sampleQueries = [
   "What are the conditions at Blue Rock on Friday?"
 ];
 
+// Define markdown components with proper styling
+const markdownComponents: Components = {
+  // Style headings
+  h1: ({node, ...props}) => <h1 {...props} className="text-2xl font-bold mb-4" />,
+  h2: ({node, ...props}) => <h2 {...props} className="text-xl font-bold mb-3" />,
+  h3: ({node, ...props}) => <h3 {...props} className="text-lg font-bold mb-2" />,
+  
+  // Style paragraphs
+  p: ({node, ...props}) => <p {...props} className="text-sm sm:text-base mb-4 last:mb-0" />,
+  
+  // Style links
+  a: ({node, ...props}) => (
+    <a {...props} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" />
+  ),
+  
+  // Style lists
+  ul: ({node, ...props}) => <ul {...props} className="list-disc list-inside mb-4" />,
+  ol: ({node, ...props}) => <ol {...props} className="list-decimal list-inside mb-4" />,
+  li: ({node, ...props}) => <li {...props} className="mb-1" />,
+  
+  // Style code blocks
+  code: ({node, inline, ...props}) => (
+    inline ? 
+      <code {...props} className="bg-gray-100 rounded px-1 py-0.5 text-sm font-mono" /> :
+      <code {...props} className="block bg-gray-100 rounded p-2 text-sm font-mono overflow-x-auto" />
+  ),
+  
+  // Style blockquotes
+  blockquote: ({node, ...props}) => (
+    <blockquote {...props} className="border-l-4 border-gray-200 pl-4 italic my-4" />
+  ),
+};
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -111,111 +144,87 @@ Try clicking one of the sample questions below, or ask your own!
     return messages.some(message => message.role === 'user');
   };
 
-  const markdownComponents: Components = {
-    code: ({ className, children }) => {
-      const match = /language-(\w+)/.exec(className || '');
-      return match ? (
-        <SyntaxHighlighter
-          style={atomDark as any}
-          language={match[1]}
-        >
-          {String(children).replace(/\n$/, '')}
-        </SyntaxHighlighter>
-      ) : (
-        <code className={className}>
-          {children}
-        </code>
-      );
-    },
-    p: ({ children }) => <p className="mb-2">{children}</p>,
-    h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
-    h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
-    h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-    ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
-    ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
-    li: ({ children }) => <li className="mb-1">{children}</li>,
-    a: ({ href, children }) => (
-      <a href={href} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
-        {children}
-      </a>
-    ),
-    blockquote: ({ children }) => (
-      <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2">
-        {children}
-      </blockquote>
-    ),
-  };
-
   return (
-    <div className="flex flex-col h-screen max-w-3xl mx-auto p-4">
-      {/* Messages Section */}
-      <div className="flex-1 overflow-y-auto space-y-4 mb-20">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex flex-col ${
-              message.role === 'user' ? 'items-end' : 'items-start'
-            }`}
-          >
+    <div className="relative flex flex-col min-h-screen bg-gray-50">
+      {/* Main chat container */}
+      <div className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+        {/* Messages container with improved spacing */}
+        <div className="space-y-6 py-8">
+          {messages.map((message, index) => (
             <div
-              className={`max-w-[80%] rounded-lg p-4 ${
-                message.role === 'user'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-900'
+              key={index}
+              className={`flex flex-col ${
+                message.role === 'user' ? 'items-end' : 'items-start'
               }`}
             >
-              {message.role === 'assistant' ? (
-                <>
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={markdownComponents}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
-                  {message.weatherData && (
-                    <div className="mt-4 border-t pt-4">
-                      <WeatherGauges
-                        windSpeed={message.weatherData.windSpeed}
-                        windDirection={message.weatherData.windDirection}
-                        flightConditions={message.weatherData.flightConditions}
-                      />
-                    </div>
-                  )}
-                </>
-              ) : (
-                message.content
-              )}
+              <div
+                className={`relative max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 shadow-sm
+                  ${message.role === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-gray-900 border border-gray-100'
+                  }`}
+              >
+                {message.role === 'assistant' ? (
+                  <div className="prose prose-sm sm:prose-base max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                    {message.weatherData && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <WeatherGauges
+                          windSpeed={message.weatherData.windSpeed}
+                          windDirection={message.weatherData.windDirection}
+                          flightConditions={message.weatherData.flightConditions}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm sm:text-base">{message.content}</p>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg p-4 animate-pulse">
-              Thinking... 🪂
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <div className="animate-pulse flex space-x-1">
+                    <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                    <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                    <div className="h-2 w-2 bg-gray-400 rounded-full"></div>
+                  </div>
+                  <span className="text-gray-600">Thinking...</span>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Fixed bottom section containing sample queries and input */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="max-w-3xl mx-auto">
+      {/* Fixed bottom section with glass effect */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200 shadow-lg">
+        <div className="max-w-4xl mx-auto w-full">
           {/* Sample Queries Section */}
           {!hasUserMessages() && (
-            <div className="px-4 py-2 border-b border-gray-100">
+            <div className="px-4 sm:px-6 py-3 border-b border-gray-100">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm text-gray-500">Try asking:</span>
+                <span className="text-sm text-gray-500 font-medium">Try asking:</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {sampleQueries.map((query, index) => (
                   <button
                     key={index}
                     onClick={() => handleSampleQuery(query)}
-                    className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 
-                             text-gray-700 rounded-full text-sm border 
-                             border-gray-200 transition-colors duration-200
-                             hover:border-gray-300 focus:outline-none 
-                             focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    className="px-3 py-1.5 bg-gray-50/80 hover:bg-gray-100 
+                             text-gray-700 rounded-full text-xs sm:text-sm border 
+                             border-gray-200 transition-all duration-200
+                             hover:border-gray-300 hover:shadow-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 
+                             focus:ring-opacity-50 active:scale-95"
                   >
                     {query}
                   </button>
@@ -224,31 +233,48 @@ Try clicking one of the sample questions below, or ask your own!
             </div>
           )}
 
-          {/* Input Form */}
-          <div className="p-4">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Message Paragliding AI..."
-                className="flex-1 p-2 border border-gray-300 rounded-lg 
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
-                         shadow-sm"
-                disabled={isLoading}
-                style={{ height: '50px', borderRadius: '13px', padding: '21px', fontSize: 'larger' }}
-              />
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg 
-                         hover:bg-blue-600 disabled:opacity-50 
-                         disabled:cursor-not-allowed font-medium
-                         shadow-sm transition-colors duration-200"
-                style={{ height: '50px' }}
-              >
-                Send
-              </button>
+          {/* Input Form with responsive design */}
+          <div className="p-4 sm:p-6">
+            <form onSubmit={handleSubmit} className="flex gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Message Paragliding AI..."
+                  className="w-full h-12 sm:h-14 pl-4 pr-12 py-2 
+                           text-base sm:text-lg bg-gray-50/80
+                           border border-gray-200 rounded-2xl
+                           focus:outline-none focus:ring-2 focus:ring-blue-500
+                           focus:border-transparent transition-all duration-200
+                           placeholder-gray-400"
+                  disabled={isLoading}
+                />
+                {input.length > 0 && (
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2
+                             w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center
+                             bg-blue-500 text-white rounded-xl
+                             hover:bg-blue-600 disabled:opacity-50
+                             disabled:cursor-not-allowed transition-all
+                             duration-200 shadow-sm hover:shadow
+                             active:scale-95"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      viewBox="0 0 24 24" 
+                      fill="currentColor" 
+                      className="w-5 h-5"
+                    >
+                      <path 
+                        d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </form>
           </div>
         </div>
