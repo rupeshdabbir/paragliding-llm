@@ -2,6 +2,8 @@
 
 A sophisticated AI-powered weather assistant for paragliding enthusiasts, providing real-time weather conditions and flying recommendations for popular paragliding locations in the Bay Area.
 
+**Current Version**: v0.7-alpha
+
 ## 🌟 Features
 
 - **Real-time Weather Data**: Powered by Open-Meteo's HRRR model for accurate forecasts
@@ -175,6 +177,32 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Pinecone for vector database
 - Google AI for embeddings
 - Next.js team for the amazing framework
+
+## 📈 Future Plans (v0.8-alpha)
+
+### 🔔 Smart Notifications
+- Historical query tracking and analysis
+- WhatsApp/Telegram integration for weather alerts
+- Trend analysis for optimal flying conditions
+- Custom notification preferences
+
+### 👤 User Authentication
+- Secure user login system
+- Personal API key management
+- Customizable weather preferences
+- Saved locations and favorites
+
+### 🗺️ Extended Location Support
+- Additional Bay Area paragliding sites
+- Custom location addition
+- Site-specific weather patterns
+- Location-based recommendations
+
+### 🧠 Enhanced AI Capabilities
+- Larger context window for better analysis
+- Improved weather pattern recognition
+- More detailed flying condition assessments
+- Advanced trend prediction
 
 ---
 
