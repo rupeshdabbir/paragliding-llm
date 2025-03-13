@@ -26,7 +26,6 @@ const sampleQueries = [
   "Can I fly in Mussel Rock today?",
   "What's the weather like in Mussel Rock tomorrow?",
   "Is it good to fly in Ed Levin this weekend?",
-  "How's the wind at Alameda right now?",
   "What are the conditions at Blue Rock on Friday?"
 ];
 
@@ -75,7 +74,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `# Welcome to Paragliding AI Assistant! 🪂 - α
+      content: `# Welcome to Paragliding AI Assistant! 🪂 - alpha α
 
 I'm here to help you with weather conditions and paragliding advice. Feel free to ask about current conditions or flying recommendations.
 
