@@ -41,11 +41,6 @@ async function main() {
     // Define locations with proper structure
     const locations: Location[] = [
       {
-        name: "Alameda",
-        latitude: 37.7652,
-        longitude: -122.2416
-      },
-      {
         name: "Mussel Rock State Park",
         latitude: 37.6684,
         longitude: -122.4944
