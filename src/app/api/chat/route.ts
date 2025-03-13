@@ -116,6 +116,21 @@ function calculateFlightConditions(weatherData: any) {
   const date = weatherData.metadata.forecastDate;
   const dayOfWeek = weatherData.metadata.dayOfWeek;
 
+  // Parse hourly data
+  const hourlyData = weatherData.metadata.hourlyData 
+    ? weatherData.metadata.hourlyData.map((hourStr: string) => JSON.parse(hourStr))
+    : [];
+
+  // Get wind direction from hourly data
+  let windDirection = 0;
+  if (hourlyData.length > 0) {
+    // Use the current hour's wind direction in PST
+    const currentTimePST = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    const currentHour = currentTimePST.getHours();
+    const currentData = hourlyData[currentHour] || hourlyData[0];
+    windDirection = parseFloat(currentData.windDirection);
+  }
+
   // Calculate flight conditions score
   let score = 0;
   let reasons = [];
@@ -156,7 +171,9 @@ function calculateFlightConditions(weatherData: any) {
     temperature,
     windSpeed,
     maxWindSpeed,
+    windDirection,
     cloudCover,
+    hourlyData, // Include hourly data in the response
     flightConditions: {
       recommendation,
       confidence: score
@@ -217,7 +234,7 @@ export async function POST(req: NextRequest) {
     const prompt = `
 You are a helpful paragliding assistant that provides weather information and flying advice.
 
-Today's date is ${new Date().toLocaleDateString()}.
+Today's date is ${new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).toLocaleDateString()}.
 
 The user asked: "${message}"
 
@@ -228,6 +245,7 @@ ${flightConditions ? `
 Current weather conditions for ${flightConditions.dayOfWeek}, ${flightConditions.date}:
 - Temperature: ${flightConditions.temperature}°F
 - Wind Speed: ${flightConditions.windSpeed} mph (Max: ${flightConditions.maxWindSpeed} mph)
+- Wind Direction: ${flightConditions.windDirection}°
 - Cloud Cover: ${flightConditions.cloudCover}%
 - Flight Conditions: ${flightConditions.flightConditions.recommendation} (Confidence: ${(flightConditions.flightConditions.confidence * 100).toFixed(0)}%)
 - Assessment: ${flightConditions.reasons.join(', ')}

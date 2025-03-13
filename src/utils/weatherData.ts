@@ -21,9 +21,12 @@ function formatDatePST(date: Date): string {
 
 // Helper function to clean metadata
 function cleanMetadata(metadata: any) {
-  const clean: Record<string, string> = {};
+  const clean: Record<string, any> = {};
   for (const [key, value] of Object.entries(metadata)) {
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    if (key === 'hourlyData') {
+      // Keep hourlyData as is since it's an array of objects
+      clean[key] = value;
+    } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       clean[key] = value.toString();
     }
   }
@@ -126,6 +129,11 @@ Flying Conditions: ${flyingConditions}${conditionsNote ? ` (${conditionsNote})` 
     pressure: hour.pressure.toFixed(1)
   }));
 
+  // Convert hourly data to strings for Pinecone compatibility
+  const hourlyDataStrings = hourlyData.map(hour => 
+    JSON.stringify(hour)
+  );
+
   // Create the document with metadata
   return new Document({
     pageContent: dailyForecast,
@@ -144,7 +152,7 @@ Flying Conditions: ${flyingConditions}${conditionsNote ? ` (${conditionsNote})` 
       maxWindSpeed: Math.max(...dayWinds).toFixed(1),
       averageCloudCover: (dayClouds.reduce((a, b) => a + b, 0) / dayClouds.length).toFixed(1),
       dataPoints: dayData.length.toString(),
-      hourlyData: hourlyData
+      hourlyData: hourlyDataStrings // Store as array of strings
     },
   });
 }
